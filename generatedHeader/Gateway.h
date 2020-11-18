@@ -24,7 +24,6 @@
 #include "../CommLib/NetComm/include/UDPSender.hpp"
 #include "../CommLib/NetComm/include/UDPReceiver.hpp"
 #include "../CommLib/NetComm/include/packet.hpp"
-#include "../UserType.hpp"
 #include "./MQ.h"
 #define STATE___init 0
 #define STATE___final 1
@@ -35,51 +34,58 @@
 #define STATE__queRespRecved 6
 #define STATE__queRespSent 7
 #define STATE__authRespRecved 8
+#define MAX_CLIENT_NUM 6
 std::string SELF_IP_STR = "127.0.0.1";
 std::string SERVER_IP_STR = "127.0.0.1";
-u_short SERVER_IP_PORT = 8888;
-u_short SELF_IP_PORT = 6666;
 static pcap_t* devGateway;
-char* tempDataGateway;
-std::string tempDataGatewayStr;
-ConcurrentQueue serverQueue;
-ConcurrentQueue clientQueue;
+std::map<int, int> clientIp2QIDMap;
+std::map<int, ushort> clientIp2PortMap;
+ConcurrentQueue cqs[MAX_CLIENT_NUM];
+
 ;class Gateway {
 	
 	private:
 		int hostId;
 		int gateway;
-		int server;
-		ByteVec msg;
-		time_t latest_time;
+		int server;		
 		GwAnce gwAnce;
 		AcAuthReq_C2G acAuthReq_c2g;
-		AcAuthReq_G2S AcAuthReq_g2s;
+		AcAuthReq_G2S acAuthReq_g2s;
 		AuthQuAck authQuAck;
 		AuthQu authQu;
 		AcAuthAns acAuthAns;
 
-		ip_address gateway_id;
+		int clientId_int;
 		int gatewayId_int;
 
+
+	public: 
+		int __currentState = STATE___init;
+		ushort SELF_PORT;
+		ushort SERVER_PORT;
 
 
         unsigned char master_privkey[IBE_MASTER_PRIVKEY_LEN];
         unsigned char master_pubkey[IBE_MASTER_PUBKEY_LEN];
         unsigned char usr_privkey[IBE_USR_PRIVKEY_LEN];
 
-
-	public: 
+		Gateway(ushort self_port, ushort server_port);
+		~Gateway();
 		void Sign(unsigned char* msg, unsigned char* sig, size_t msglen);
 		bool Verify(unsigned char* msg, unsigned char* sig, size_t msglen, int verify_id);
-		int recvFromHost();
-		int sendToHost(u_char* data_, int length_);
+		int sendToHost(u_char* data_, int length_, u_char dmac[6]);
 		int recvFromServer();
 		int sendToServer();
 		void SMLMainGateway();
 		void initConfig();
 };
-static int __currentState = STATE___init;
+
+void initOverallConfig(){
+	
+}
+
+
+
 int main(int argc, char** argv) {
 	Gateway obj;
 /*Initialize the object by user*/

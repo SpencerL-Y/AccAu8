@@ -108,8 +108,8 @@ int main(int argc, char** argv) {
 	}
 	for(int i = 0; i < 1; i++){
 		run(server[i]);
-	}
-	
+	}	
 }
+
 #endif
 
