@@ -1,6 +1,4 @@
 #include "../generatedHeader/Gateway.h"
-int recvFromHost();
-
 int Id2Int(ip_address ip){
 	int result;
 	memcpy(&result, &ip, sizeof(int));
@@ -17,18 +15,49 @@ void recv_ether_thd(){
 }
 
 void receive_udp(Gateway* gw){
-
-}
-
-void receive_ether(){
-
+	gw->recvFromServer();
 }
 
 void handle_thd(Gateway* gw){
 	gw->SMLMainGateway();
 }
 
+void gwAnce_thd(Gateway* gw){
+	gw->gwAnce.auth_hdr.length = htonl(sizeof(GwAnce) - sizeof(auth_header) - 16);
+	gw->gwAnce.auth_hdr.serial_num = htonl(0);
+	gw->gwAnce.auth_hdr.timestamp = htonl(0);
+	gw->gwAnce.auth_hdr.type = 0x01;
+	gw->gwAnce.auth_hdr.version = 1;
+	//TODO: configure gateway ip and mac here
+	int tempId = htonl(gw->gatewayId_int);
+	memcpy(&gw->gwAnce.gateway_id, &tempId, sizeof(int));
+	gw->gwAnce.gateway_mac[0] = 0x48;
+	gw->gwAnce.gateway_mac[1] = 0x2a;
+	gw->gwAnce.gateway_mac[2] = 0xe3;
+	gw->gwAnce.gateway_mac[3] = 0x60;
+	gw->gwAnce.gateway_mac[4] = 0x31;
+	gw->gwAnce.gateway_mac[5] = 0xfa;
+	//TODO: configure random number here
+	gw->gwAnce.gateway_random_number = htonl(rand());
+	time_t t;
+	time(&t);
+	gw->gwAnce.auth_hdr.timestamp = htonl(t);
+	//TODO: add memcpy here
+	gw->Sign((unsigned char*)&gw->gwAnce, (unsigned char*)gw->gwAnce.signature, sizeof(GwAnce) - 16);
+	//std::cout << sizeof(GwAnce) << std::endl;
+	char *sendData = (char*)malloc(sizeof(GwAnce));
+	memcpy(sendData, &gw->gwAnce, sizeof(GwAnce));
+	u_char broadcast_mac[6];
+	for(int i = 0; i < 6; i ++){
+		broadcast_mac[i] = 0xff;
+	}
+	while(true){
 
+		std::cout << "send to host" << std::endl;
+		gw->sendToHost((u_char*)sendData, sizeof(GwAnce), broadcast_mac);
+		sleep(5);
+	}
+}
 static void dataHandlerGatewayrecvFromHost(u_char* param, const struct pcap_pkthdr* header, const u_char* packetData){
 	ether_header* eh;
 	eh = (ether_header*)packetData;
@@ -60,6 +89,7 @@ static void dataHandlerGatewayrecvFromHost(u_char* param, const struct pcap_pkth
 }
 
 int recvFromHost(){
+	std::cout << "recv from host" << std::endl;
 	EtherReceiver er;
 	pcap_if_t* dev = er.getDevice();
 	char errbuf[500];
@@ -71,6 +101,12 @@ int recvFromHost(){
 	er.listenWithHandler(devGateway, dataHandlerGatewayrecvFromHost, NULL);
 	return 0;
 
+}
+
+Gateway::Gateway(ushort self_port, ushort server_port){
+	this->SELF_PORT = self_port;
+	this->SERVER_PORT = server_port;
+	__currentState = STATE___init;
 }
 
 int Gateway::sendToHost(u_char* data_, int length_, u_char dmac[6]){
@@ -90,7 +126,7 @@ int Gateway::sendToHost(u_char* data_, int length_, u_char dmac[6]){
 	int result =snd.sendEtherWithMac(data_, length_, dmac);
 	return result;
 }
-int Gateway::recvFromServer(){
+void Gateway::recvFromServer(){
 	/*Add IP Str and portNUm here*/
 	std::string IPStr_ = SELF_IP_STR;
 	u_short portNum_ = SELF_PORT;
@@ -109,7 +145,6 @@ int Gateway::recvFromServer(){
 			AuthQu* tempPack = (AuthQu*) auth_hdr;
 			int tempId = Id2Int(tempPack->client_id);
 			cqs[clientIp2QIDMap[tempId]].Push(item);
-			clientId_int = tempId;
 			std::cout << "udp recv: " << tempItem << std::endl;
 			free(tempItem);
 		} else if(auth_hdr->type == 0x11){
@@ -119,7 +154,6 @@ int Gateway::recvFromServer(){
 			AcAuthAns* tempPack = (AcAuthAns*) auth_hdr;
 			int tempId = Id2Int(tempPack->client_id);
 			cqs[clientIp2QIDMap[tempId]].Push(item);
-			clientId_int = tempId;
 			std::cout << "udp recv: " << tempItem << std::endl;
 			free(tempItem);
 		} else {
@@ -127,7 +161,6 @@ int Gateway::recvFromServer(){
 			free(tempItem);
 		}
 	}
-	return 0;
 }
 
 int Gateway::sendToServer(){
@@ -276,19 +309,11 @@ void Gateway::SMLMainGateway(){
 					//std::cout << sizeof(GwAnce) << std::endl;
 					char *sendData = (char*)malloc(sizeof(GwAnce));
 					memcpy(sendData, &gwAnce, sizeof(GwAnce));
-					sendToHost((u_char*)sendData, sizeof(GwAnce));
-					char* item;
-					while(true){
-						cqs[clientIp2QIDMap[this->clientId_int]].Pop(item);
-						auth_header* auth_hdr = (auth_header*)item;
-						if(auth_hdr->type == 0x10){
-							memcpy(&acAuthReq_c2g, item, sizeof(AcAuthReq_C2G));
-							free(item);
-							break;
-						} else {
-							free(item);
-						}
+					u_char broadcast_mac[6];
+					for(int i = 0; i < 6; i ++){
+						broadcast_mac[i] = 0xff;
 					}
+					sendToHost((u_char*)sendData, sizeof(GwAnce), broadcast_mac);
 				__currentState = STATE__reqMsgRecved;
 				
 				break;}
@@ -297,33 +322,38 @@ void Gateway::SMLMainGateway(){
 				std::cout << "--------------------STATE___final" << std::endl;
 				break;}
 			case STATE__reqMsgRecved:{
-				std::cout << "--------------------STATE__reqMsgRecved" << std::endl;
-
-					sendToServer();
+				std::cout << "--------------------STATE__reqMsgRecving" << std::endl;
+				sendToServer();
 				__currentState = STATE__reqMsgSent;
-				
 				break;}
 			case STATE__reqMsgSent:{
 				std::cout << "--------------------STATE__reqMsgSent" << std::endl;
-				
-					recvFromServer();
+					//recvFromServer();
+				char* item;
+				while(true){
+					cqs[clientIp2QIDMap[this->clientId_int]].Pop(item);
+					auth_header* auth_hdr = (auth_header*) item;
+					AuthQu* tempPack = (AuthQu*)item;
+					if(auth_hdr->type == 0x20){
+						memcpy(&this->authQu, tempPack, sizeof(AuthQu));
+						break;
+					} else {
+						free(item);
+					}
+				}
 				__currentState = STATE__authQueRecved;
 				
 				break;}
 			case STATE__authQueRecved:{
 				std::cout << "--------------------STATE__authQueRecved" << std::endl;
-					char* item;
-					while(true){
-						cqs[clientIp2QIDMap[this->clientId_int]].Pop(item);
-					}
-					sendToHost((u_char*)tempDataGateway, sizeof(AuthQu));
+				sendToHost((u_char*)&this->authQu, sizeof(AuthQu), (u_char*)this->acAuthReq_c2g.client_mac);
 				__currentState = STATE__authQueSent;
 				
 				break;}
 			case STATE__authQueSent:{
 				std::cout << "--------------------STATE__authQueSent" << std::endl;
 				
-					recvFromHost();
+				//sendToServer();
 				__currentState = STATE__queRespRecved;
 				
 				break;}
@@ -336,15 +366,26 @@ void Gateway::SMLMainGateway(){
 				break;}
 			case STATE__queRespSent:{
 				std::cout << "--------------------STATE__queRespSent" << std::endl;
-				
-					recvFromServer();
+				char* item;
+				while(true){
+					cqs[clientIp2QIDMap[this->clientId_int]].Pop(item);
+					auth_header* auth_hdr = (auth_header*) item;
+					AcAuthAns* tempPack = (AcAuthAns*)item;
+					if(auth_hdr->type == 0x11){
+						memcpy(&this->acAuthAns, item, sizeof(AcAuthAns));
+						free(item);
+						break;
+					} else {
+						free(item);
+					}
+				}
 				__currentState = STATE__authRespRecved;
 				
 				break;}
 			case STATE__authRespRecved:{
 				std::cout << "--------------------STATE__authRespRecved" << std::endl;
 				
-					sendToHost((u_char*)tempDataGateway, sizeof(AcAuthAns));
+				sendToHost((u_char*)&this->acAuthAns, sizeof(AcAuthAns), (u_char*)this->acAuthReq_c2g.client_mac);
 				__currentState = STATE___final;
 				
 				break;}
