@@ -1,34 +1,48 @@
 #include "../generatedHeader/Server.h"
+
+
+Server::Server(ushort self_port, ushort gate_port){
+	this->SELF_PORT = self_port;
+	this->GATEWAY_PORT = gate_port;
+}
+
 int Server::receive(){
 	/*Add IP Str and portNUm here*/
 	std::string IPStr_ = SELF_IP_STR;
-	u_short portNum_ = SELF_IP_PORT;
+	u_short portNum_ = SELF_PORT;
+	this->breakListen = true;
 	UDPReceiver  er;
 	/*allocation for dst_ here*/
-	if(tempDataServer != NULL){
-		free(tempDataServer);
-	}
-	tempDataServer = (char*)malloc(1000*sizeof(char));
-	int result = er.receivePacket((u_char*)tempDataServer, IPStr_, portNum_);
-	auth_header* auth_hdr = (auth_header*)tempDataServer;
-	if(auth_hdr->type == 0x10){
-		std::cout << "acAuthReq_g2s recv" << std::endl;
-		memcpy(&acAuthReq_g2s, tempDataServer, sizeof(AcAuthReq_G2S));
-	} else if(auth_hdr->type = 0x21){
-		std::cout << "authQuAck recv" << std::endl;
-		memcpy(&authQuAck, tempDataServer, sizeof(AuthQuAck));
-		std::cout << "WATCH1: " << tempDataServer << std::endl;
-	} else {
-		std::cout << "SHOULD NOT BE HERE" << std::endl;
-	}
-	std::cout << "recv: "<< tempDataServer << std::endl;
-	return result;
+	while(this->breakListen){
 
+		char* item = (char*)malloc(100*sizeof(char));
+		int result = er.receivePacket((u_char*)item, IPStr_, portNum_);
+		auth_header* auth_hdr = (auth_header*)item;
+		std::cout << "UDP PACKET RECV" << std::endl;
+		if(auth_hdr->type == 0x10){
+			std::cout << "server: acAuthReq_g2s recv" << std::endl;
+			AcAuthReq_G2S* itemitem = (AcAuthReq_G2S*)item;
+			// JUDGEMENT OF IP
+			itemitem->client_id;
+			memcpy(&acAuthReq_g2s, item, sizeof(AcAuthReq_G2S));
+			std::cout << "recv: " << item << std::endl;
+			this->cq.Push(item);
+		} else if(auth_hdr->type = 0x21){
+			std::cout << "authQuAck recv" << std::endl;
+			memcpy(&authQuAck, item, sizeof(AuthQuAck));
+			std::cout << "recv: " << item << std::endl;
+			this->cq.Push(item);
+		} else {
+			std::cout << "IGNORED" << std::endl;
+			free(item);
+		}
+	}
+	return 0;
 }
 int Server::send(u_char* data_, int length_){
 	/*Add Ip Str and portNum here*/
 	std::string IPStr_ = GATEWAY_IP_STR;
-	u_short portNum_ = GATEWAY_IP_PORT;
+	u_short portNum_ = GATEWAY_PORT;
 	UDPSender snd;
 	/*Add length and data content to send here*/
 	int result = snd.sendPacket(data_, length_, IPStr_, portNum_);
@@ -36,10 +50,6 @@ int Server::send(u_char* data_, int length_){
 	return result;
 }
 
-ByteVec Server::SymEnc(ByteVec msg, int key){
-	ByteVec result;
-	return result;
-}
 
 void Server::Sign(unsigned char* msg, unsigned char* sig, size_t msglen){
 	if (digital_sign(msg, msglen, usr_privkey, sig) == -1) {
@@ -60,28 +70,23 @@ bool Server::Verify(unsigned char* msg, unsigned char* sig, size_t msglen, int v
 
 void Server::initConfig(){
 	ibe_init();
-	server_id.byte1 = 127;
-	server_id.byte2 = 0;
-	server_id.byte3 = 0;
-	server_id.byte4 = 1;
-	memcpy(&serverId_int, &server_id, sizeof(int));
+	// set server ip
+	this->serverId_int = inet_addr(SELF_IP_STR.c_str());
+	
 	unsigned char mprik[IBE_MASTER_PRIVKEY_LEN] = {0x40, 0x8c, 0xe9, 0x67};
 	unsigned char mpubk[IBE_MASTER_PUBKEY_LEN] = {0x31, 0x57, 0xcd, 0x29, 0xaf, 0x13, 0x83, 0xb7, 0x5e, 0xa0};
-	memcpy(master_privkey, mprik, IBE_MASTER_PRIVKEY_LEN);
-	memcpy(master_pubkey, mpubk, IBE_MASTER_PUBKEY_LEN);
+	memcpy(this->master_privkey, mprik, IBE_MASTER_PRIVKEY_LEN);
+	memcpy(this->master_pubkey, mpubk, IBE_MASTER_PUBKEY_LEN);
 	// if (masterkey_gen(master_privkey, master_pubkey) == -1) {
     //         printf("masterkey_gen failed\n");
     // }
 	std::cout << "start user key gen" << std::endl;
-    userkey_gen(serverId_int, master_privkey, usr_privkey);
+    userkey_gen(this->serverId_int, this->master_privkey, this->usr_privkey);
 	std::cout << "start user key over" << std::endl;
+	
 }
 
-int Id2Int(ip_address ip){
-	int result;
-	memcpy(&result, &ip, sizeof(int));
-	return result;
-}
+
 
 
 void Server::SMLMainServer(){
@@ -92,7 +97,25 @@ void Server::SMLMainServer(){
 			case STATE___init:{
 
 				std::cout << "--------------------STATE___init" << std::endl;
-				receive();
+				AcAuthReq_G2S* acAuthReq_g2s_result;
+				while(true){
+					char* item;
+					this->cq.Pop(item);
+					auth_header* auth_hdr = (auth_header*) item;
+					if(auth_hdr->type == 0x10){
+						AcAuthReq_G2S* tempItem = (AcAuthReq_G2S*) item;
+						int recvClientId = 0;
+						memcpy(&recvClientId, &tempItem->client_id, sizeof(int));
+						if(ntohl(recvClientId) == this->clientId_int){
+							acAuthReq_g2s_result= tempItem;
+						} else {
+							free(item);
+						}
+					} else {
+						free(item);
+					}
+				}
+				memcpy(&this->acAuthReq_g2s, acAuthReq_g2s_result, sizeof(AcAuthReq_G2S));
 				std::cout << "udp packet received" << std::endl;
 				__currentState = STATE__reqRecved;
 				break;
@@ -110,16 +133,17 @@ void Server::SMLMainServer(){
 					__currentState = STATE__verifyReqFailed;
 				}
 				else {
-					client_id = acAuthReq_g2s.client_id;
-					authQu.auth_hdr.length = htonl(sizeof(AuthQu) - sizeof(auth_header));
-					authQu.auth_hdr.serial_num = acAuthReq_g2s.auth_hdr.serial_num;
-					authQu.auth_hdr.timestamp = acAuthReq_g2s.auth_hdr.timestamp;
+					//clientId_int = Id2Int(acAuthReq_g2s.client_id);
+					authQu.auth_hdr.length = htonl(sizeof(AuthQu) - sizeof(auth_header) - 16);
+					authQu.auth_hdr.serial_num = htonl(ntohl(acAuthReq_g2s.auth_hdr.serial_num));
+					authQu.auth_hdr.timestamp = htonl(ntohl(acAuthReq_g2s.auth_hdr.timestamp));
 					authQu.auth_hdr.type = 0x20;
 					authQu.auth_hdr.version = 1;
-					authQu.client_id = acAuthReq_g2s.client_id;
+					int tempClientId = htonl(clientId_int);
+					memcpy(&authQu.client_id, &tempClientId, sizeof(int));
 					authQu.random_num_rs = htonl(rand()); 
-					authQu.server_id = server_id;
-					
+					int tempServerId = htonl(serverId_int);
+					memcpy(&authQu.server_id, &tempServerId, sizeof(int));
 					Sign((unsigned char*)&authQu, authQu.server_signature, sizeof(AuthQu) - 16);
 				__currentState = STATE__queCreated;
 				}
@@ -130,12 +154,11 @@ void Server::SMLMainServer(){
 			{
 				
 					std::cout << "--------------------STATE__queCreated" << std::endl;
-					if(tempDataServer != NULL){
-						free(tempDataServer);
-					}
-					tempDataServer = (char*)malloc(sizeof(AuthQu));
-					memcpy(tempDataServer, &authQu, sizeof(AuthQu));
-					send((u_char*)tempDataServer, sizeof(AuthQu));
+					char* sendData;
+					sendData = (char*)malloc(sizeof(AuthQu));
+					memcpy(sendData, &authQu, sizeof(AuthQu));
+					send((u_char*)sendData, sizeof(AuthQu));
+					free(sendData);
 					__currentState = STATE__queSent;
 
 				
@@ -150,7 +173,36 @@ void Server::SMLMainServer(){
 			case STATE__queSent:{
 				std::cout << "--------------------STATE__queSent" << std::endl;
 				
-				receive();
+				AuthQuAck* authQuAck_result;
+				AcAuthReq_G2S* acAuthReq_g2s_result;
+				while(true){
+					char* item;
+					this->cq.Pop(item);
+					auth_header* auth_hdr = (auth_header*) item;
+					if(auth_hdr->type == 0x21){
+						AcAuthReq_G2S* tempItem = (AcAuthReq_G2S*) item;
+						int recvClientId = 0;
+						memcpy(&recvClientId, &tempItem->client_id, sizeof(int));
+						if(ntohl(recvClientId) == this->clientId_int){
+							authQuAck_result = (AuthQuAck*) tempItem;
+						} else {
+							free(item);
+						}
+					} else if(auth_hdr->type = 0x10){
+						AcAuthReq_G2S* tempItem = (AcAuthReq_G2S*) item;
+						int recvClientId = 0;
+						memcpy(&recvClientId, &tempItem->client_id, sizeof(int));
+						if(ntohl(recvClientId) == this->clientId_int){
+							acAuthReq_g2s_result= tempItem;
+							memcpy(&acAuthReq_g2s, acAuthReq_g2s_result, sizeof(AcAuthReq_G2S));
+							__currentState = STATE__reqRecved;
+							break;
+						}
+					} else {
+						free(item);
+					}
+				}
+				memcpy(&authQuAck, authQuAck_result, sizeof(AuthQuAck));
 				std::cout << "udp packet received" << std::endl;
 				__currentState = STATE__queRespRecved;
 				
@@ -163,44 +215,64 @@ void Server::SMLMainServer(){
 				}
 				else {
 					bool result = true;
-					result &= authQuAck.auth_hdr.serial_num == authQu.auth_hdr.serial_num;
-					result &= authQuAck.auth_hdr.type == 0x21;
-					result &= authQuAck.auth_hdr.timestamp == authQu.auth_hdr.timestamp;
-					result &= authQuAck.random_number_rs == authQu.random_num_rs;
+					std::cout << "Serial number test" << std::endl;
+					if(ntohl(authQuAck.auth_hdr.serial_num) == ntohl(authQu.auth_hdr.serial_num)){
+						std::cout << "PASSED" << std::endl;
+					} else {
+						result = false;
+						std::cout << "FAILED" << std::endl;
+					}
+					std::cout << "Timestamp test" << std::endl;
+					if(ntohl(authQuAck.auth_hdr.timestamp) == ntohl(authQu.auth_hdr.timestamp)){
+						std::cout << "PASSED" << std::endl;
+					} else {
+						result = false;
+						std::cout << "FAILED" << std::endl;
+					}
+					std::cout << "Random number test"  << std::endl;
+					if(ntohl(authQuAck.random_number_rs) == ntohl(authQu.random_num_rs)){
+						std::cout << "PASSED" << std::endl;
+					} else {
+						result = false;
+						std::cout << "FAILED" << std::endl;
+					}
 					if(!result){
 						std::cout << "Error: entries matching problem of authQuAck" << std::endl;
 					}
-					acAuthAns.auth_hdr.length = htonl(sizeof(AcAuthAns) - sizeof(auth_header));
-					acAuthAns.auth_hdr.serial_num = authQuAck.auth_hdr.serial_num;
-					acAuthAns.auth_hdr.timestamp = authQuAck.auth_hdr.timestamp;
+					acAuthAns.auth_hdr.length = htonl(sizeof(AcAuthAns) - sizeof(auth_header) - 16);
+					acAuthAns.auth_hdr.serial_num = htonl(ntohl(authQuAck.auth_hdr.serial_num));
+					acAuthAns.auth_hdr.timestamp = htonl(ntohl(authQuAck.auth_hdr.timestamp));
 					acAuthAns.auth_hdr.type =  0x11;
 					acAuthAns.auth_hdr.version = 1;
 					int resultInt = result;
-					acAuthAns.client_id = authQuAck.client_id;
+					int tempClientId = 0;
+					memcpy(&tempClientId, &authQuAck.client_id, sizeof(int));
+					int temptempClient = htonl(ntohl(tempClientId));
+					memcpy(&acAuthAns.client_id, &temptempClient, sizeof(int));
 					acAuthAns.auth_result = htonl(resultInt);
 					acAuthAns.authorization = htonl(0);
-					acAuthAns.client_ip_and_mask[0] = authQuAck.client_id;
-					acAuthAns.client_ip_and_mask[1].byte1 = 255;
-					acAuthAns.client_ip_and_mask[1].byte2 = 255;
-					acAuthAns.client_ip_and_mask[1].byte3 = 255;
-					acAuthAns.client_ip_and_mask[1].byte4 = 0;
-					acAuthAns.gateway_ip = acAuthReq_g2s.gateway_id;
+					memcpy(&acAuthAns.client_ip_and_mask[0], &temptempClient, sizeof(int));
+					int mask= 0xffffff00;
+					int tempMask = htonl(mask);
+					memcpy(&acAuthAns.client_ip_and_mask[1], &tempMask, sizeof(int));
+					int tempGateId = 0;
+					memcpy(&tempGateId, & acAuthReq_g2s.gateway_id, sizeof(int));
+					int temptempGateId = htonl(ntohl(tempGateId));
+					memcpy(&acAuthAns.gateway_ip, &temptempGateId, sizeof(int));
 					// TODO: set prikey here.
-					acAuthAns.client_ip_prikey;
-					acAuthAns.random_num_rs = htonl(rand());
-					acAuthAns.server_id = server_id;
+					memcpy(&acAuthAns.client_ip_prikey, &usr_privkey, 14);
+					acAuthAns.random_num_rs = htonl(ntohl(authQuAck.random_number_rs));
+					int tempServerId = htonl(serverId_int);
+					memcpy(&acAuthAns.server_id, &tempServerId, sizeof(int));
 					Sign((unsigned char*)&acAuthAns, (unsigned char*)&acAuthAns.server_signature, sizeof(AcAuthAns) - 16);
 				__currentState = STATE__authRespCreated;
 				}
 				break;}
 			case STATE__authRespCreated:{
 				std::cout << "--------------------STATE__authRespCreated" << std::endl;
-				if(tempDataServer != NULL){
-					free(tempDataServer);
-				}
-				tempDataServer = (char*)malloc(sizeof(AcAuthAns));
-				memcpy(tempDataServer, &acAuthAns, sizeof(AcAuthAns));
-				send((u_char*)tempDataServer, sizeof(AcAuthAns));
+				char* sendData = (char*)malloc(sizeof(AcAuthAns));
+				memcpy(sendData, &acAuthAns, sizeof(AcAuthAns));
+				send((u_char*)sendData, sizeof(AcAuthAns));
 				__currentState = STATE___final;
 				
 				break;}
@@ -208,7 +280,7 @@ void Server::SMLMainServer(){
 				std::cout << "--------------------STATE__verifyQueRespFailed" << std::endl;
 				
 				__currentState = STATE___final;
-				
+				this->breakListen = false;
 				break;}
 			default: break;
 		}
