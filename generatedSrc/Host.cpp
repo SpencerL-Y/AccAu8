@@ -25,10 +25,6 @@ static void dataHandlerHostReceive(u_char* param, const struct pcap_pkthdr* head
 	ether_header* eh;
 	eh = (ether_header*)packetData;
 	/*Configure your own prootcol number of ethernet frame*/
-	for(int i = 0; i < 6; i ++){
-		std::cout << std::hex << (ushort)eh->h_dest[i] << " ";
-	}
-	std::cout << std::endl;
 	if(ntohs(eh->type) == 0x888f && (macEqualToBroad(eh->h_dest) || macEqualToSelf(eh->h_dest))){
 		std::cout << "ETHER RECEIVED:" << std::endl;
 		auth_header* authHead = (auth_header*)((char*)packetData + sizeof(ether_header));
@@ -162,7 +158,9 @@ bool Host::Verify(unsigned char* msg, unsigned char* sig, size_t msglen, int ver
 }
 void Host::initConfig(){
 	ibe_init();
-	clientId_int = 0x1e1e3329;
+	clientId_int = inet_addr("127.0.0.1");
+	//clientId_int = 0x1e1e3b2a;
+	//clientId_int = 0x1e1e3329;
 	//memcpy(&clientId_int, &client_id, sizeof(int));
 	std::cout << "client id: " << std::hex << clientId_int<< std::endl;
 	unsigned char mprik[IBE_MASTER_PRIVKEY_LEN] = {0x40, 0x8c, 0xe9, 0x67};

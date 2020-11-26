@@ -1,9 +1,14 @@
 #include "../generatedHeader/Server.h"
 
 
-Server::Server(ushort self_port, ushort gate_port){
+Server::Server(std::string client_ip, ushort self_port, ushort gate_port){
+	this->CLIENT_IP_STR = client_ip;
 	this->SELF_PORT = self_port;
 	this->GATEWAY_PORT = gate_port;
+}
+
+Server::~Server(){
+	
 }
 
 int Server::receive(){
@@ -15,7 +20,10 @@ int Server::receive(){
 	/*allocation for dst_ here*/
 	while(this->breakListen){
 
-		char* item = (char*)malloc(100*sizeof(char));
+		char* item = (char*)malloc(1000*sizeof(char));
+		
+		std::cout << "recv item: " << static_cast<const void *>(item) << std::endl;
+		std::cout << "recving info: IP: " << IPStr_ << " port: " << portNum_ << std::endl;
 		int result = er.receivePacket((u_char*)item, IPStr_, portNum_);
 		auth_header* auth_hdr = (auth_header*)item;
 		std::cout << "UDP PACKET RECV" << std::endl;
@@ -72,7 +80,7 @@ void Server::initConfig(){
 	ibe_init();
 	// set server ip
 	this->serverId_int = inet_addr(SELF_IP_STR.c_str());
-	
+	this->clientId_int = inet_addr(CLIENT_IP_STR.c_str());
 	unsigned char mprik[IBE_MASTER_PRIVKEY_LEN] = {0x40, 0x8c, 0xe9, 0x67};
 	unsigned char mpubk[IBE_MASTER_PUBKEY_LEN] = {0x31, 0x57, 0xcd, 0x29, 0xaf, 0x13, 0x83, 0xb7, 0x5e, 0xa0};
 	memcpy(this->master_privkey, mprik, IBE_MASTER_PRIVKEY_LEN);
@@ -100,23 +108,33 @@ void Server::SMLMainServer(){
 				AcAuthReq_G2S* acAuthReq_g2s_result;
 				while(true){
 					char* item;
+					std::cout << "pop" << std::endl;
 					this->cq.Pop(item);
+					std::cout << "pop over. item: " << static_cast<const void *>(item) << std::endl;
 					auth_header* auth_hdr = (auth_header*) item;
 					if(auth_hdr->type == 0x10){
-						AcAuthReq_G2S* tempItem = (AcAuthReq_G2S*) item;
+						AcAuthReq_G2S tempItem;
+						memcpy(&tempItem, item, sizeof(AcAuthReq_G2S));
+						free(item);
+						//std::cout << "tempItem: " << static_cast<const void *>(tempItem) << std::endl;
 						int recvClientId = 0;
-						memcpy(&recvClientId, &tempItem->client_id, sizeof(int));
+						memcpy(&recvClientId, &tempItem.client_id, sizeof(int));
+						std::cout << std::hex << ntohl(recvClientId) << std::endl;
+						std::cout << std::hex << this->clientId_int << std::endl;
 						if(ntohl(recvClientId) == this->clientId_int){
-							acAuthReq_g2s_result= tempItem;
+							std::cout << "recvClient Id = clientId_int" << std::endl;
+							acAuthReq_g2s_result= &tempItem;
+							break;
 						} else {
-							free(item);
 						}
 					} else {
 						free(item);
 					}
 				}
+				std::cout << "out of the loop" << std::endl;
 				memcpy(&this->acAuthReq_g2s, acAuthReq_g2s_result, sizeof(AcAuthReq_G2S));
 				std::cout << "udp packet received" << std::endl;
+				// free(acAuthReq_g2s_result);
 				__currentState = STATE__reqRecved;
 				break;
 			}
@@ -124,6 +142,7 @@ void Server::SMLMainServer(){
 			{
 				__currentState = -100;
 				std::cout << "--------------------STATE___final" << std::endl;
+				this->breakListen = true;
 				break;
 			}
 			case STATE__reqRecved:
@@ -185,6 +204,7 @@ void Server::SMLMainServer(){
 						memcpy(&recvClientId, &tempItem->client_id, sizeof(int));
 						if(ntohl(recvClientId) == this->clientId_int){
 							authQuAck_result = (AuthQuAck*) tempItem;
+							break;
 						} else {
 							free(item);
 						}
@@ -204,6 +224,7 @@ void Server::SMLMainServer(){
 				}
 				memcpy(&authQuAck, authQuAck_result, sizeof(AuthQuAck));
 				std::cout << "udp packet received" << std::endl;
+				free(authQuAck_result);
 				__currentState = STATE__queRespRecved;
 				
 				break;}

@@ -32,6 +32,7 @@
 #define STATE__queRespRecved 6
 #define STATE__authRespCreated 7
 #define STATE__verifyQueRespFailed 8
+#define CLIENT_NUM 1
 
 std::string SELF_IP_STR;
 std::string GATEWAY_IP_STR;
@@ -46,6 +47,7 @@ class Server {
 		int serverId_int;
 
 		bool breakListen;
+		std::string CLIENT_IP_STR;
 
 		ushort SELF_PORT;
 		ushort GATEWAY_PORT;
@@ -58,7 +60,7 @@ class Server {
 		unsigned char master_privkey[IBE_MASTER_PRIVKEY_LEN];
 		unsigned char master_pubkey[IBE_MASTER_PUBKEY_LEN];
 		unsigned char usr_privkey[IBE_USR_PRIVKEY_LEN];
-		Server(ushort self_port, ushort gate_port);
+		Server(std::string client_ip, ushort self_port, ushort gate_port);
 		~Server();
 		void Sign(unsigned char* msg, unsigned char* sig, size_t msglen);
 		bool Verify(unsigned char* msg, unsigned char* sig, size_t msglen, int verify_id);
@@ -93,23 +95,37 @@ void run(Server* server){
 	std::thread recv_t(&recv_thd, server);
 	std::thread handle_t(&handle_thd, server);
 
-	recv_t.join();
 	handle_t.join();
+	recv_t.join();
 }
 
 //static int __currentState = STATE___init;
 int main(int argc, char** argv) {
 	initOverallConfig();
-	ushort self_prefix = 6000;
-	ushort gate_prefix = 8000;
+	ushort self_prefix = 6001;
+	ushort gate_prefix = 8001;
 	Server* server[6];
-	for(int i = 0; i < 1; i ++){
-		server[i] = new Server(self_prefix + i, gate_prefix + i);
+	for(int i = 0; i < CLIENT_NUM; i ++){
+		server[i] = new Server("127.0.0.1", self_prefix + i, gate_prefix + i);
+		server[i]->initConfig();
 	}
-	for(int i = 0; i < 1; i++){
-		run(server[i]);
-	}	
+	std::thread handle_ts[CLIENT_NUM];
+	std::thread recv_ts[CLIENT_NUM];
+	std::cout << "Server created" << std::endl;
+	for (int i = 0; i < CLIENT_NUM; i++) {
+		recv_ts[i] = std::thread(&recv_thd, server[i]);
+	}
+	std::cout << "Start handling" << std::endl;
+	for (int i = 0; i < CLIENT_NUM; i++) {
+		handle_ts[i] = std::thread(&handle_thd, server[i]);
+	}
+	for (int i = 0; i < CLIENT_NUM; i++) {
+		recv_ts[i].join();
+		handle_ts[i].join();
+	}
+	for(int i = 0; i < CLIENT_NUM; i++){
+		delete(server[i]);
+	}
 }
-
 #endif
 

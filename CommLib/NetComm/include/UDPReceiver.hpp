@@ -6,6 +6,7 @@
 #include <memory.h>
 #include <unistd.h>
 #include <sys/socket.h>
+#include <sys/errno.h>
 #include "pcap.h"
 
 class UDPReceiver

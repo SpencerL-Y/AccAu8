@@ -7,6 +7,7 @@ int Id2Int(ip_address ip){
 }
 
 void recv_udp_thd(Gateway* gw){
+	std::cout << "begin recv udp" << std::endl; 
 	receive_udp(gw);
 }
 
@@ -89,11 +90,14 @@ static void dataHandlerGatewayrecvFromHost(u_char* param, const struct pcap_pkth
 }
 
 int recvFromHost(){
-	std::cout << "recv from host" << std::endl;
+	std::cout <<"recv from host" << std::endl;
 	EtherReceiver er;
+	std::cout <<"get device" << std::endl;
 	pcap_if_t* dev = er.getDevice();
+	std::cout <<"get device" << std::endl;
 	char errbuf[500];
 	pcap_t* selectedAdp = pcap_open_live(dev->name, 65536, 1, 1000, errbuf);
+	std::cout <<"open live" << std::endl;
 	devGateway = selectedAdp;
 	std::cout << dev->name << std::endl;
 	/*Add self defined dataHandler to handle data received*/
@@ -127,14 +131,16 @@ int Gateway::sendToHost(u_char* data_, int length_, u_char dmac[6]){
 	return result;
 }
 void Gateway::recvFromServer(){
+	std::cout << debugId << "recv from server" << std::endl;
 	/*Add IP Str and portNUm here*/
 	std::string IPStr_ = SELF_IP_STR;
 	u_short portNum_ = SELF_PORT;
 	UDPReceiver  er;
 	/*allocation for dst_ here*/
 	while(true){
-
-		char* tempItem = (char*)malloc(150*sizeof(char));
+		std::cout <<  debugId << "here" << std::endl;
+		char* tempItem = (char*)malloc(1000*sizeof(char));
+		
 		int result = er.receivePacket((u_char*)tempItem, IPStr_, portNum_);
 		std::cout << "UDP RECV" << std::endl;
 		auth_header* auth_hdr = (auth_header*)tempItem;
@@ -180,7 +186,7 @@ int Gateway::sendToServer(){
 		cqs[clientIp2QIDMap[clientId_int]].Pop(item);
 		auth_header* auth_hdr = (auth_header*)item;
 		if(auth_hdr->type == 0x10){
-			breakCondition = true;
+			breakCondition = false;
 			memcpy(&this->acAuthReq_c2g, item, sizeof(AcAuthReq_C2G));
 			if(!Verify((unsigned char*)&acAuthReq_c2g, acAuthReq_c2g.client_signature, sizeof(AcAuthReq_C2G) - 16, Id2Int(acAuthReq_c2g.client_id))){
 				free(item);
@@ -207,7 +213,7 @@ int Gateway::sendToServer(){
 				free(item);
 			}
 		} else if(auth_hdr->type = 0x21){
-			breakCondition = true;
+			breakCondition = false;
 			memcpy(&this->authQuAck, item, sizeof(AuthQuAck));
 			//test the validity TODO
 			std::cout << "check serial number" << std::endl;
@@ -237,6 +243,7 @@ int Gateway::sendToServer(){
 		}
 	}
 	std::cout << "send data_: " << data_ << std::endl;
+	std::cout << "send info: IP: " << IPStr_ << " port: " << portNum_ << " Length: " << length_ <<  std::endl;
 	int result = snd.sendPacket(data_, length_, IPStr_, portNum_);
 	free(data_);
 	return result;
@@ -272,9 +279,9 @@ void Gateway::initConfig(){
 	// if (masterkey_gen(master_privkey, master_pubkey) == -1) {
     //         printf("masterkey_gen failed\n");
     // }
-	std::cout << "start user key gen" << std::endl;
+	std::cout <<  debugId <<"start user key gen" << std::endl;
     userkey_gen(gatewayId_int, master_privkey, usr_privkey);
-	std::cout << "start user key over" << std::endl;
+	std::cout <<  debugId << "start user key over" << std::endl;
 }
 
 

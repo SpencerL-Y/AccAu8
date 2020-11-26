@@ -12,6 +12,7 @@ typedef struct ether_header {
 } ether_header;
 
 
+#pragma pack()
 #pragma pack(1)
 typedef struct auth_header {
 	u_char version;// version number 
@@ -20,6 +21,7 @@ typedef struct auth_header {
 	u_int timestamp;// time stamp
 	u_short length;// length
 } auth_header;
+#pragma pack()
 
 #pragma pack(1)
 typedef struct ip_address {
@@ -28,6 +30,7 @@ typedef struct ip_address {
 	u_char byte3;
 	u_char byte4;
 } ip_address;
+#pragma pack()
 
 
 #pragma pack(1)
@@ -39,6 +42,7 @@ typedef struct GwAnce{
 	ip_address gateway_id;
 	u_char signature[16];
 } GwAnce;
+#pragma pack()
 
 
 #pragma pack(1)
@@ -66,6 +70,7 @@ typedef struct AcAuthReq_G2S{
 	u_char gateway_signature[16];
 } AcAuthReq_G2S;
 
+#pragma pack()
 #pragma pack(1)
 typedef struct AcAuthAns{
 	// type= 0x11
@@ -81,6 +86,7 @@ typedef struct AcAuthAns{
 	u_char server_signature[16];
 } AcAuthAns;
 
+#pragma pack()
 
 #pragma pack(1)
 typedef struct AuthQu{
@@ -91,6 +97,7 @@ typedef struct AuthQu{
 	ip_address server_id;
 	u_char server_signature[16];
 } AuthQu;
+#pragma pack()
 
 
 
@@ -103,6 +110,7 @@ typedef struct AuthQuAck{
 	u_char client_signature[16];
 }AuthQuAck;
 
+#pragma pack()
 
 
 #pragma pack(1)
@@ -114,6 +122,7 @@ typedef struct {
 	u_char client_signature[16];
 }MaintProbeReq;
 
+#pragma pack()
 
 #pragma pack(1)
 typedef struct MaintProbeAns{
@@ -125,6 +134,7 @@ typedef struct MaintProbeAns{
 	u_char server_signature[16];
 }MaintProbeAns;
 
+#pragma pack()
 
 #pragma pack(1)
 typedef struct AuthChangeNotify{
@@ -138,6 +148,7 @@ typedef struct AuthChangeNotify{
 	u_char server_signature[16];
 
 } AuthChangeNotify;
+#pragma pack()
 
 #pragma pack(1)
 typedef struct AuthChangeAns_G2S{
@@ -147,6 +158,7 @@ typedef struct AuthChangeAns_G2S{
 	ip_address gateway_id;
 	u_char gateway_signature[16];
 }AuthChangeAns_G2S;
+#pragma pack()
 
 
 #pragma pack(1)
@@ -158,6 +170,7 @@ typedef struct AuthChangeAns_C2G{
 	u_char client_signature[16];
 }AuthChangeAns_C2G;
 
+#pragma pack()
 
 #pragma pack(1)
 typedef struct udp_header {
@@ -168,6 +181,7 @@ typedef struct udp_header {
 } udp_header;
 
 
+#pragma pack()
 #pragma pack(1)
 typedef struct ip_header {
 	u_char  ver_ihl;		  
@@ -183,3 +197,5 @@ typedef struct ip_header {
 	ip_address  daddr;      
 	u_int   op_pad;         
 } ip_header;
+
+#pragma pack()

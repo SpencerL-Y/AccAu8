@@ -7,12 +7,13 @@ UDPReceiver::UDPReceiver(/* args */)
 
 int UDPReceiver::receivePacket(u_char* dst, std::string ipStr, u_short portNum)
 {
+    std::cout << "receive Packet" << std::endl;
     int this_fd, ret;
     struct sockaddr_in target_addr;
     this_fd = socket(AF_INET, SOCK_DGRAM, 0);
     if(this_fd < 0)
     {
-        std::cout << "create socket failed";
+        std::cout << "create socket failed: " << errno << std::endl;
 		return 0;
     }
     memset(&target_addr, 0, sizeof(target_addr));
@@ -32,8 +33,9 @@ int UDPReceiver::receivePacket(u_char* dst, std::string ipStr, u_short portNum)
     struct sockaddr_in recv_target_addr;
     memset(recvBuf, 0, 1000);
     int count;
+    std::cout << "receive from" << std::endl;
     count = recvfrom(this_fd, recvBuf, 1000, 0, (struct sockaddr*) &recv_target_addr, &len);
-    
+    std::cout << "receive from ends" << std::endl;
     if (count == -1) {
 		std::cout << "recv data failed" << std::endl;
 		return -1;
