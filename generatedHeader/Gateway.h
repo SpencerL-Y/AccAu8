@@ -112,7 +112,7 @@ int main(int argc, char** argv) {
 	std::cout << "start hello thread end" << std::endl;
 	
 	std::thread recvEther_t(&recv_ether_thd);
-	for(int i = 0; i < CLIENT_NUM; i++){
+	for(ushort i = 0; i < CLIENT_NUM; i++){
 		gates[i] = new Gateway(8001 + i, 6001 + i);
 		gates[i]->debugId = i + 1;
 		gates[i]->initConfig();

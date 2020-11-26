@@ -175,6 +175,7 @@ int Gateway::sendToServer(){
 	//TODO: add Server IP here
 	std::string IPStr_ =  SERVER_IP_STR;
 	u_short portNum_ = this->SERVER_PORT;
+	std::cout << "portNum_:" << this->SERVER_PORT  << std::endl;
 	UDPSender snd;
 	/*Add length and data content to send here*/
 
@@ -243,7 +244,7 @@ int Gateway::sendToServer(){
 		}
 	}
 	std::cout << "send data_: " << data_ << std::endl;
-	std::cout << "send info: IP: " << IPStr_ << " port: " << portNum_ << " Length: " << length_ <<  std::endl;
+	std::cout << "send info: IP: " << IPStr_ << std::dec <<  " port: " << portNum_ << " Length: " << length_ <<  std::endl;
 	int result = snd.sendPacket(data_, length_, IPStr_, portNum_);
 	free(data_);
 	return result;
@@ -271,7 +272,7 @@ bool Gateway::Verify(unsigned char* msg, unsigned char* sig, size_t msglen, int 
 void Gateway::initConfig(){
 	ibe_init();
 	// SET GATEWAYID HERE
-	gatewayId_int = inet_addr("127.0.0.1");
+	this->gatewayId_int = inet_addr("127.0.0.1");
 	unsigned char mprik[IBE_MASTER_PRIVKEY_LEN] = {0x40, 0x8c, 0xe9, 0x67};
 	unsigned char mpubk[IBE_MASTER_PUBKEY_LEN] = {0x31, 0x57, 0xcd, 0x29, 0xaf, 0x13, 0x83, 0xb7, 0x5e, 0xa0};
 	memcpy(master_privkey, mprik, IBE_MASTER_PRIVKEY_LEN);
@@ -282,6 +283,7 @@ void Gateway::initConfig(){
 	std::cout <<  debugId <<"start user key gen" << std::endl;
     userkey_gen(gatewayId_int, master_privkey, usr_privkey);
 	std::cout <<  debugId << "start user key over" << std::endl;
+	std::cout << "server port:" << this->SERVER_PORT << std::endl;
 }
 
 

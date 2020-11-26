@@ -25,6 +25,10 @@ int Server::receive(){
 		std::cout << "recv item: " << static_cast<const void *>(item) << std::endl;
 		std::cout << "recving info: IP: " << IPStr_ << " port: " << portNum_ << std::endl;
 		int result = er.receivePacket((u_char*)item, IPStr_, portNum_);
+		if(result == 0 || result == -1 || result == -2){
+			std::cout << "receivePacket Error: " << std::dec <<result << std::endl;
+			this->breakListen = false;
+		}
 		auth_header* auth_hdr = (auth_header*)item;
 		std::cout << "UDP PACKET RECV" << std::endl;
 		if(auth_hdr->type == 0x10){
@@ -81,6 +85,7 @@ void Server::initConfig(){
 	// set server ip
 	this->serverId_int = inet_addr(SELF_IP_STR.c_str());
 	this->clientId_int = inet_addr(CLIENT_IP_STR.c_str());
+
 	unsigned char mprik[IBE_MASTER_PRIVKEY_LEN] = {0x40, 0x8c, 0xe9, 0x67};
 	unsigned char mpubk[IBE_MASTER_PUBKEY_LEN] = {0x31, 0x57, 0xcd, 0x29, 0xaf, 0x13, 0x83, 0xb7, 0x5e, 0xa0};
 	memcpy(this->master_privkey, mprik, IBE_MASTER_PRIVKEY_LEN);
@@ -142,7 +147,7 @@ void Server::SMLMainServer(){
 			{
 				__currentState = -100;
 				std::cout << "--------------------STATE___final" << std::endl;
-				this->breakListen = true;
+				this->breakListen = false;
 				break;
 			}
 			case STATE__reqRecved:
@@ -202,6 +207,8 @@ void Server::SMLMainServer(){
 						AcAuthReq_G2S* tempItem = (AcAuthReq_G2S*) item;
 						int recvClientId = 0;
 						memcpy(&recvClientId, &tempItem->client_id, sizeof(int));
+						std::cout << std::hex << ntohl(recvClientId) << std::endl;
+						std::cout << std::hex << this->clientId_int << std::endl;
 						if(ntohl(recvClientId) == this->clientId_int){
 							authQuAck_result = (AuthQuAck*) tempItem;
 							break;
