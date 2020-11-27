@@ -65,6 +65,7 @@ class Server {
 		void Sign(unsigned char* msg, unsigned char* sig, size_t msglen);
 		bool Verify(unsigned char* msg, unsigned char* sig, size_t msglen, int verify_id);
 		int receive();
+		int receive_plus();
 		int send(u_char* data_, int length_);
 		void SMLMainServer();
 		void initConfig();

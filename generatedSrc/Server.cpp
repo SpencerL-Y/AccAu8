@@ -51,6 +51,79 @@ int Server::receive(){
 	}
 	return 0;
 }
+
+int Server::receive_plus(){
+	std::string ipStr =  SELF_IP_STR;
+	u_short portNum = this->SELF_PORT;
+
+    std::cout << "receive Packet" << std::endl;
+    int this_fd, ret;
+    struct sockaddr_in target_addr;
+    this_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    std::cout << "this_fd: " << this_fd << std::endl;
+    if(this_fd < 0)
+    {
+        close(this_fd);
+        std::cout << "create socket failed: " << errno << std::endl;
+		return 0;
+    }
+    memset(&target_addr, 0, sizeof(target_addr));
+    target_addr.sin_family = AF_INET;
+    in_addr_t addr_dst;
+    inet_aton(ipStr.c_str(), (in_addr*)&addr_dst);
+    target_addr.sin_addr.s_addr = (uint32_t)addr_dst;
+    target_addr.sin_port = htons(portNum);
+    ret = bind(this_fd, (struct sockaddr*)&target_addr, sizeof(target_addr));
+    if(ret < 0)
+    {
+        std::cout << "bind failure:" <<errno<< std::endl;
+        close(this_fd);
+		return -1;
+    }
+	this->breakListen = true;
+	while(this->breakListen){
+		char* dst = (char*)malloc(1000*sizeof(char));
+    	char recvBuf[1000];
+    	socklen_t len = 1000;
+    	struct sockaddr_in recv_target_addr;
+    	memset(recvBuf, 0, 1000);
+    	int count;
+    	std::cout << "receive from" << std::endl;
+    	count = recvfrom(this_fd, recvBuf, 1000, 0, (struct sockaddr*) &recv_target_addr, &len);
+    	std::cout << "receive from ends" << std::endl;
+    	if (count == -1) {
+			std::cout << "recv data failed: " << errno << std::endl;
+    	    close(this_fd);
+			return -2;
+		}
+    	std::cout << "RECV BUF:" << recvBuf << std::endl;
+    	memcpy(dst, recvBuf, 1000);
+		auth_header* auth_hdr = (auth_header*)dst;
+		std::cout << "UDP PACKET RECV" << std::endl;
+		if(auth_hdr->type == 0x10){
+			std::cout << "server: acAuthReq_g2s recv" << std::endl;
+			AcAuthReq_G2S* itemitem = (AcAuthReq_G2S*)dst;
+			// JUDGEMENT OF IP
+			itemitem->client_id;
+			memcpy(&acAuthReq_g2s, dst, sizeof(AcAuthReq_G2S));
+			std::cout << "recv: " << dst << std::endl;
+			this->cq.Push(dst);
+		} else if(auth_hdr->type = 0x21){
+			std::cout << "authQuAck recv" << std::endl;
+			memcpy(&authQuAck, dst, sizeof(AuthQuAck));
+			std::cout << "recv: " << dst << std::endl;
+			this->cq.Push(dst);
+		} else {
+			std::cout << "IGNORED" << std::endl;
+			free(dst);
+		}
+	}
+	close(this_fd);
+    return 1;
+
+}
+
+
 int Server::send(u_char* data_, int length_){
 	/*Add Ip Str and portNum here*/
 	std::string IPStr_ = GATEWAY_IP_STR;

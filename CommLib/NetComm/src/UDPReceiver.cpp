@@ -32,7 +32,7 @@ int UDPReceiver::receivePacket(u_char* dst, std::string ipStr, u_short portNum)
 		return -1;
     }
     char recvBuf[1000];
-    socklen_t len;
+    socklen_t len = 1000;
     struct sockaddr_in recv_target_addr;
     memset(recvBuf, 0, 1000);
     int count;
