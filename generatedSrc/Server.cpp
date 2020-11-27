@@ -1,10 +1,8 @@
 #include "../generatedHeader/Server.h"
 
 
-Server::Server(std::string client_ip, ushort self_port, ushort gate_port){
-	this->CLIENT_IP_STR = client_ip;
-	this->SELF_PORT = self_port;
-	this->GATEWAY_PORT = gate_port;
+Server::Server(){
+	this->__currentState = STATE___init;
 }
 
 Server::~Server(){
@@ -22,9 +20,10 @@ int Server::receive(){
 
 		char* item = (char*)malloc(1000*sizeof(char));
 		
-		std::cout << "recv item: " << static_cast<const void *>(item) << std::endl;
 		std::cout << "recving info: IP: " << IPStr_ << " port: " << portNum_ << std::endl;
 		int result = er.receivePacket((u_char*)item, IPStr_, portNum_);
+
+		std::cout << "recv item: " << static_cast<const void *>(item) << std::endl;
 		if(result == 0 || result == -1 || result == -2){
 			std::cout << "receivePacket Error: " << std::dec <<result << std::endl;
 			this->breakListen = false;
@@ -52,76 +51,76 @@ int Server::receive(){
 	return 0;
 }
 
-int Server::receive_plus(){
-	std::string ipStr =  SELF_IP_STR;
-	u_short portNum = this->SELF_PORT;
+// int Server::receive_plus(){
+// 	std::string ipStr =  SELF_IP_STR;
+// 	u_short portNum = this->SELF_PORT;
 
-    std::cout << "receive Packet" << std::endl;
-    int this_fd, ret;
-    struct sockaddr_in target_addr;
-    this_fd = socket(AF_INET, SOCK_DGRAM, 0);
-    std::cout << "this_fd: " << this_fd << std::endl;
-    if(this_fd < 0)
-    {
-        close(this_fd);
-        std::cout << "create socket failed: " << errno << std::endl;
-		return 0;
-    }
-    memset(&target_addr, 0, sizeof(target_addr));
-    target_addr.sin_family = AF_INET;
-    in_addr_t addr_dst;
-    inet_aton(ipStr.c_str(), (in_addr*)&addr_dst);
-    target_addr.sin_addr.s_addr = (uint32_t)addr_dst;
-    target_addr.sin_port = htons(portNum);
-    ret = bind(this_fd, (struct sockaddr*)&target_addr, sizeof(target_addr));
-    if(ret < 0)
-    {
-        std::cout << "bind failure:" <<errno<< std::endl;
-        close(this_fd);
-		return -1;
-    }
-	this->breakListen = true;
-	while(this->breakListen){
-		char* dst = (char*)malloc(1000*sizeof(char));
-    	char recvBuf[1000];
-    	socklen_t len = 1000;
-    	struct sockaddr_in recv_target_addr;
-    	memset(recvBuf, 0, 1000);
-    	int count;
-    	std::cout << "receive from" << std::endl;
-    	count = recvfrom(this_fd, recvBuf, 1000, 0, (struct sockaddr*) &recv_target_addr, &len);
-    	std::cout << "receive from ends" << std::endl;
-    	if (count == -1) {
-			std::cout << "recv data failed: " << errno << std::endl;
-    	    close(this_fd);
-			return -2;
-		}
-    	std::cout << "RECV BUF:" << recvBuf << std::endl;
-    	memcpy(dst, recvBuf, 1000);
-		auth_header* auth_hdr = (auth_header*)dst;
-		std::cout << "UDP PACKET RECV" << std::endl;
-		if(auth_hdr->type == 0x10){
-			std::cout << "server: acAuthReq_g2s recv" << std::endl;
-			AcAuthReq_G2S* itemitem = (AcAuthReq_G2S*)dst;
-			// JUDGEMENT OF IP
-			itemitem->client_id;
-			memcpy(&acAuthReq_g2s, dst, sizeof(AcAuthReq_G2S));
-			std::cout << "recv: " << dst << std::endl;
-			this->cq.Push(dst);
-		} else if(auth_hdr->type = 0x21){
-			std::cout << "authQuAck recv" << std::endl;
-			memcpy(&authQuAck, dst, sizeof(AuthQuAck));
-			std::cout << "recv: " << dst << std::endl;
-			this->cq.Push(dst);
-		} else {
-			std::cout << "IGNORED" << std::endl;
-			free(dst);
-		}
-	}
-	close(this_fd);
-    return 1;
+//     std::cout << "receive Packet" << std::endl;
+//     int this_fd, ret;
+//     struct sockaddr_in target_addr;
+//     this_fd = socket(AF_INET, SOCK_DGRAM, 0);
+//     std::cout << "this_fd: " << this_fd << std::endl;
+//     if(this_fd < 0)
+//     {
+//         close(this_fd);
+//         std::cout << "create socket failed: " << errno << std::endl;
+// 		return 0;
+//     }
+//     memset(&target_addr, 0, sizeof(target_addr));
+//     target_addr.sin_family = AF_INET;
+//     in_addr_t addr_dst;
+//     inet_aton(ipStr.c_str(), (in_addr*)&addr_dst);
+//     target_addr.sin_addr.s_addr = (uint32_t)addr_dst;
+//     target_addr.sin_port = htons(portNum);
+//     ret = bind(this_fd, (struct sockaddr*)&target_addr, sizeof(target_addr));
+//     if(ret < 0)
+//     {
+//         std::cout << "bind failure:" <<errno<< std::endl;
+//         close(this_fd);
+// 		return -1;
+//     }
+// 	this->breakListen = true;
+// 	while(this->breakListen){
+// 		char* dst = (char*)malloc(1000*sizeof(char));
+//     	char recvBuf[1000];
+//     	socklen_t len = 1000;
+//     	struct sockaddr_in recv_target_addr;
+//     	memset(recvBuf, 0, 1000);
+//     	int count;
+//     	std::cout << "receive from" << std::endl;
+//     	count = recvfrom(this_fd, recvBuf, 1000, 0, (struct sockaddr*) &recv_target_addr, &len);
+//     	std::cout << "receive from ends" << std::endl;
+//     	if (count == -1) {
+// 			std::cout << "recv data failed: " << errno << std::endl;
+//     	    close(this_fd);
+// 			return -2;
+// 		}
+//     	std::cout << "RECV BUF:" << recvBuf << std::endl;
+//     	memcpy(dst, recvBuf, 1000);
+// 		auth_header* auth_hdr = (auth_header*)dst;
+// 		std::cout << "UDP PACKET RECV" << std::endl;
+// 		if(auth_hdr->type == 0x10){
+// 			std::cout << "server: acAuthReq_g2s recv" << std::endl;
+// 			AcAuthReq_G2S* itemitem = (AcAuthReq_G2S*)dst;
+// 			// JUDGEMENT OF IP
+// 			itemitem->client_id;
+// 			memcpy(&acAuthReq_g2s, dst, sizeof(AcAuthReq_G2S));
+// 			std::cout << "recv: " << dst << std::endl;
+// 			this->cq.Push(dst);
+// 		} else if(auth_hdr->type = 0x21){
+// 			std::cout << "authQuAck recv" << std::endl;
+// 			memcpy(&authQuAck, dst, sizeof(AuthQuAck));
+// 			std::cout << "recv: " << dst << std::endl;
+// 			this->cq.Push(dst);
+// 		} else {
+// 			std::cout << "IGNORED" << std::endl;
+// 			free(dst);
+// 		}
+// 	}
+// 	close(this_fd);
+//     return 1;
 
-}
+// }
 
 
 int Server::send(u_char* data_, int length_){
@@ -153,12 +152,17 @@ bool Server::Verify(unsigned char* msg, unsigned char* sig, size_t msglen, int v
 	}
 }
 
-void Server::initConfig(){
+void Server::initConfig(std::string client_ip, ushort self_port, ushort gate_port){
+	// init the ibe library
 	ibe_init();
-	// set server ip
+	// set server ip which is set by overall init
 	this->serverId_int = inet_addr(SELF_IP_STR.c_str());
+	// set client ip, gateway port and self port: respected to the object
+	this->CLIENT_IP_STR = client_ip;
+	this->SELF_PORT = self_port;
+	this->GATEWAY_PORT = gate_port;
 	this->clientId_int = inet_addr(CLIENT_IP_STR.c_str());
-
+	// init the master private key and master public key
 	unsigned char mprik[IBE_MASTER_PRIVKEY_LEN] = {0x40, 0x8c, 0xe9, 0x67};
 	unsigned char mpubk[IBE_MASTER_PUBKEY_LEN] = {0x31, 0x57, 0xcd, 0x29, 0xaf, 0x13, 0x83, 0xb7, 0x5e, 0xa0};
 	memcpy(this->master_privkey, mprik, IBE_MASTER_PRIVKEY_LEN);
@@ -166,6 +170,7 @@ void Server::initConfig(){
 	// if (masterkey_gen(master_privkey, master_pubkey) == -1) {
     //         printf("masterkey_gen failed\n");
     // }
+	// generate usr private key according to its serverId listening to
 	std::cout << "start user key gen" << std::endl;
     userkey_gen(this->serverId_int, this->master_privkey, this->usr_privkey);
 	std::cout << "start user key over" << std::endl;
@@ -176,8 +181,9 @@ void Server::initConfig(){
 
 
 void Server::SMLMainServer(){
+	std::cout << "Server started" << std::endl;
 	srand(NULL);
-	initConfig();
+	//initConfig();
 	while(__currentState != -100) {
 		switch(__currentState){
 			case STATE___init:{

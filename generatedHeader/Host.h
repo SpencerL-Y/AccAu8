@@ -38,6 +38,7 @@
 #define STATE__verifyAuthRespFailed 9
 static pcap_t* devHost;
 ConcurrentQueue cq;
+std::string SELF_IP_STR;
 char client_mac[6];
 class Host {
 	private:
@@ -71,7 +72,9 @@ class Host {
 static int __currentState = STATE___init;
 int main(int argc, char** argv) {
 	Host obj;
+	std::cin >> SELF_IP_STR;
 /*Initialize the object by user*/
+	// add read config file HERE
 	obj.SMLMainHost();
 }
 #endif

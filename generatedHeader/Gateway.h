@@ -39,7 +39,6 @@ std::string SELF_IP_STR = "127.0.0.1";
 std::string SERVER_IP_STR = "127.0.0.1";
 static pcap_t* devGateway;
 std::map<int, int> clientIp2QIDMap;
-std::map<int, ushort> clientIp2PortMap;
 int CLIENT_NUM;
 ConcurrentQueue cqs[MAX_CLIENT_NUM];
 class Gateway {
@@ -68,7 +67,7 @@ class Gateway {
         unsigned char master_pubkey[IBE_MASTER_PUBKEY_LEN];
         unsigned char usr_privkey[IBE_USR_PRIVKEY_LEN];
 
-		Gateway(ushort self_port, ushort server_port);
+		Gateway();
 		~Gateway();
 		void Sign(unsigned char* msg, unsigned char* sig, size_t msglen);
 		bool Verify(unsigned char* msg, unsigned char* sig, size_t msglen, int verify_id);
@@ -76,7 +75,7 @@ class Gateway {
 		int sendToServer();
 		void SMLMainGateway();
 		void recvFromServer();
-		void initConfig();
+		void initConfig(std::string client_ip_str, ushort self_port, ushort server_port);
 };
 
 
@@ -91,31 +90,35 @@ void gwAnce_thd(Gateway* gw);
 void initOverallConfig(){
 	SELF_IP_STR = "127.0.0.1";
 	SERVER_IP_STR = "127.0.0.1";
-	CLIENT_NUM = 1;
-	clientIp2QIDMap[inet_addr("127.0.0.1")] = 0;
-	clientIp2PortMap[inet_addr("127.0.0.1")] = 8001;
-	//clientIp2PortMap[inet_addr("30.30.51.42")] = 8001;
-	//clientIp2QIDMap[inet_addr("30.30.51.42")] = 1;
+	CLIENT_NUM = 2;
+	clientIp2QIDMap[inet_addr("127.0.0.10")] = 0;
+	clientIp2QIDMap[inet_addr("127.0.0.11")] = 1;
 }
 
 
 
 int main(int argc, char** argv) {
 	initOverallConfig();
-	Gateway* gwAnceSender = new Gateway(10000, 10000);
+	// this is for sending hellp packet, no need for initialized
+	Gateway* gwAnceSender = new Gateway();
 	gwAnceSender->debugId = 0;
-	gwAnceSender->initConfig();
+	gwAnceSender->initConfig("0.0.0.0", 10000, 10000);
+
 	Gateway* gates[CLIENT_NUM];
 	std::cout << "start hello thread" << std::endl;
 	std::thread sendHello_t(&gwAnce_thd, gwAnceSender);
 	sendHello_t.detach();
 	std::cout << "start hello thread end" << std::endl;
 	
+	std::string client_ips[2];
+	client_ips[0] = "127.0.0.10";
+	client_ips[1] = "127.0.0.11";
 	std::thread recvEther_t(&recv_ether_thd);
 	for(ushort i = 0; i < CLIENT_NUM; i++){
-		gates[i] = new Gateway(8001 + i, 6001 + i);
+		// configure the port num here
+		gates[i] = new Gateway();
 		gates[i]->debugId = i + 1;
-		gates[i]->initConfig();
+		gates[i]->initConfig(client_ips[i], 8001 + i, 6001 + i);
 	}
 	std::thread recvUdp_ts[CLIENT_NUM];
 	std::thread handle_ts[CLIENT_NUM];

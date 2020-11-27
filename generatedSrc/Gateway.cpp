@@ -107,9 +107,7 @@ int recvFromHost(){
 
 }
 
-Gateway::Gateway(ushort self_port, ushort server_port){
-	this->SELF_PORT = self_port;
-	this->SERVER_PORT = server_port;
+Gateway::Gateway(){
 	__currentState = STATE___init;
 }
 
@@ -269,10 +267,15 @@ bool Gateway::Verify(unsigned char* msg, unsigned char* sig, size_t msglen, int 
 
 
 
-void Gateway::initConfig(){
+void Gateway::initConfig(std::string client_ip_str, ushort self_port, ushort server_port){
 	ibe_init();
-	// SET GATEWAYID HERE
+	// set object gateway ip
 	this->gatewayId_int = inet_addr("127.0.0.1");
+	this->clientId_int = inet_addr(client_ip_str.c_str());
+	// configure ports
+	this->SELF_PORT = self_port;
+	this->SERVER_PORT = server_port;
+	// initialize the keys
 	unsigned char mprik[IBE_MASTER_PRIVKEY_LEN] = {0x40, 0x8c, 0xe9, 0x67};
 	unsigned char mpubk[IBE_MASTER_PUBKEY_LEN] = {0x31, 0x57, 0xcd, 0x29, 0xaf, 0x13, 0x83, 0xb7, 0x5e, 0xa0};
 	memcpy(master_privkey, mprik, IBE_MASTER_PRIVKEY_LEN);
@@ -288,7 +291,7 @@ void Gateway::initConfig(){
 
 
 void Gateway::SMLMainGateway(){
-	initConfig();
+	//initConfig();
 	while(__currentState != -100) {
 		switch(__currentState){
 			case STATE___init:{

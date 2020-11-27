@@ -158,7 +158,9 @@ bool Host::Verify(unsigned char* msg, unsigned char* sig, size_t msglen, int ver
 }
 void Host::initConfig(){
 	ibe_init();
-	clientId_int = inet_addr("127.0.0.1");
+	//SELF_IP_STR = "127.0.0.1"; 
+	std::cout << "self ip str: " << SELF_IP_STR << std::endl;
+	clientId_int = inet_addr(SELF_IP_STR.c_str());
 	//clientId_int = 0x1e1e3b2a;
 	//clientId_int = 0x1e1e3329;
 	//memcpy(&clientId_int, &client_id, sizeof(int));

@@ -32,8 +32,9 @@
 #define STATE__queRespRecved 6
 #define STATE__authRespCreated 7
 #define STATE__verifyQueRespFailed 8
-#define CLIENT_NUM 1
 
+
+int CLIENT_NUM;
 std::string SELF_IP_STR;
 std::string GATEWAY_IP_STR;
 
@@ -60,7 +61,7 @@ class Server {
 		unsigned char master_privkey[IBE_MASTER_PRIVKEY_LEN];
 		unsigned char master_pubkey[IBE_MASTER_PUBKEY_LEN];
 		unsigned char usr_privkey[IBE_USR_PRIVKEY_LEN];
-		Server(std::string client_ip, ushort self_port, ushort gate_port);
+		Server();
 		~Server();
 		void Sign(unsigned char* msg, unsigned char* sig, size_t msglen);
 		bool Verify(unsigned char* msg, unsigned char* sig, size_t msglen, int verify_id);
@@ -68,10 +69,11 @@ class Server {
 		int receive_plus();
 		int send(u_char* data_, int length_);
 		void SMLMainServer();
-		void initConfig();
+		void initConfig(std::string client_ip, ushort self_port, ushort gate_port);
 };
 
 void initOverallConfig(){
+	CLIENT_NUM = 2;
 	SELF_IP_STR = "127.0.0.1";
 	GATEWAY_IP_STR = "127.0.0.1";
 	
@@ -106,23 +108,29 @@ int main(int argc, char** argv) {
 	ushort self_prefix = 6001;
 	ushort gate_prefix = 8001;
 	Server* server[6];
+	std::string client_ips[2];
+	client_ips[0] = "127.0.0.10";
+	client_ips[1] = "127.0.0.11";
+	std::cout << "CLIENT NUM: " << CLIENT_NUM << std::endl;
 	for(int i = 0; i < CLIENT_NUM; i ++){
-		server[i] = new Server("127.0.0.1", self_prefix + i, gate_prefix + i);
-		server[i]->initConfig();
+		server[i] = new Server();
+		server[i]->initConfig(client_ips[i], self_prefix + i, gate_prefix + i);
+		std::cout << "Server created" << std::endl;
 	}
 	std::thread handle_ts[CLIENT_NUM];
 	std::thread recv_ts[CLIENT_NUM];
-	std::cout << "Server created" << std::endl;
 	for (int i = 0; i < CLIENT_NUM; i++) {
 		recv_ts[i] = std::thread(&recv_thd, server[i]);
-	}
-	std::cout << "Start handling" << std::endl;
-	for (int i = 0; i < CLIENT_NUM; i++) {
 		handle_ts[i] = std::thread(&handle_thd, server[i]);
+	}
+	// std::cout << "Start handling" << std::endl;
+	// for (int i = 0; i < CLIENT_NUM; i++) {
+	// }
+	for (int i = 0; i < CLIENT_NUM; i++) {
+		handle_ts[i].join();
 	}
 	for (int i = 0; i < CLIENT_NUM; i++) {
 		recv_ts[i].join();
-		handle_ts[i].join();
 	}
 	for(int i = 0; i < CLIENT_NUM; i++){
 		delete(server[i]);
