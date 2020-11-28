@@ -3,7 +3,7 @@
 bool macEqualToBroad(u_char mac[6]){
 	for(int i = 0; i < 6; i ++){
 		if(mac[i] != 0xff){
-			std::cout <<"watch out1" << std::endl;
+			// std::cout <<"watch out1" << std::endl;
 			return false;
 		}
 	}
@@ -13,8 +13,8 @@ bool macEqualToBroad(u_char mac[6]){
 bool macEqualToSelf(u_char mac[6]){
 	for(int i = 0; i < 6; i ++){
 		if(mac[i] != (u_char)client_mac[i]){
-			std::cout << "mac: " << std::hex << (ushort) mac[i] << " cmac: " << std::hex<< (ushort)client_mac[i] << std::endl; 
-			std::cout <<"watch out2" << std::endl;
+			// std::cout << "mac: " << std::hex << (ushort) mac[i] << " cmac: " << std::hex<< (ushort)client_mac[i] << std::endl; 
+			// std::cout <<"watch out2" << std::endl;
 			return false;
 		}
 	}
@@ -245,7 +245,7 @@ void Host::SMLMainHost(){
 					memset(&gwAnce, 0, sizeof(GwAnce));
 					memcpy(&gwAnce, item, sizeof(GwAnce));
 
-					std::cout << "signed: " << std::endl;
+					// std::cout << "signed: " << std::endl;
 					for(int i = 0; i < sizeof(GwAnce); i++){
 						if(i % 16 == 0){
 							std::cout << std::endl;

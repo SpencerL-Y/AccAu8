@@ -130,7 +130,7 @@ int Server::send(u_char* data_, int length_){
 	UDPSender snd;
 	/*Add length and data content to send here*/
 	int result = snd.sendPacket(data_, length_, IPStr_, portNum_);
-	std::cout << "udp send: " << data_ << std::endl;
+	// std::cout << "udp send: " << data_ << std::endl;
 	return result;
 }
 
@@ -139,7 +139,7 @@ void Server::Sign(unsigned char* msg, unsigned char* sig, size_t msglen){
 	if (digital_sign(msg, msglen, usr_privkey, sig) == -1) {
         printf("digital_sign failed\n");
     }
-	std::cout << "sign over" << std::endl;
+	// std::cout << "sign over" << std::endl;
 }
 
 bool Server::Verify(unsigned char* msg, unsigned char* sig, size_t msglen, int verify_id){
@@ -171,9 +171,9 @@ void Server::initConfig(std::string client_ip, ushort self_port, ushort gate_por
     //         printf("masterkey_gen failed\n");
     // }
 	// generate usr private key according to its serverId listening to
-	std::cout << "start user key gen" << std::endl;
+	// std::cout << "start user key gen" << std::endl;
     userkey_gen(this->serverId_int, this->master_privkey, this->usr_privkey);
-	std::cout << "start user key over" << std::endl;
+	// std::cout << "start user key over" << std::endl;
 	
 }
 
