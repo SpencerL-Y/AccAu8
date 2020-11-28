@@ -104,22 +104,73 @@ int Host::send(char* data_, int length, u_char dmac[6]){
 }
 void Host::Sign(unsigned char* msg, unsigned char* sig, size_t msglen){
 	 if (digital_sign(msg, msglen, usr_privkey, sig) == -1) {
-         printf("INFO: digital_sign failed\n");
+         printf("ERROR: digital_sign failed\n");
      }
 	 std::cout << "INFO: sign over" << std::endl;
 }
 
 bool Host::Verify(unsigned char* msg, unsigned char* sig, size_t msglen, int verify_id){
 	if(digital_verify(sig, msg, msglen, verify_id, master_pubkey) == -1){
-		std::cout << "INFO: VERIFY FAILED !!!" << std::endl;
+		std::cout << "ERROR: VERIFY FAILED !!!" << std::endl;
 		return false;
 	} else {
 		std::cout << "INFO: VERIFY CORRECT..." << std::endl;
 		return true;
 	}
 }
-void Host::initConfig(){
+void Host::initConfig(std::string argv1){
 	ibe_init();
+	std::cout << "CONFIG: " << argv1 << std::endl;
+	std::ifstream inConf(argv1.c_str());
+	std::string s = "";
+	u_char mac[6];
+	while(getline(inConf,s)){
+		int split_pos = s.find(",");
+		std::string first = s.substr(0, split_pos);
+		std::string second = s.substr(split_pos + 1, sizeof(s));
+		std::cout << "first: " << first << std::endl;
+		std::cout << "second: " << second << std::endl;
+		if(!first.compare("SELF_IP_STR")){
+			SELF_IP_STR = second;
+			std::cout << "SELF_IP_STR: " << SELF_IP_STR << std::endl;
+		} else if(!first.compare("HOST_MAC")){
+			for(int i = 0; i < 6; i++){
+				for(int j = 0; j < 3; j ++){
+				switch(second.c_str()[j + 3*i])  
+   				{  
+					case ':': break;
+   					case '0': mac[i] += (j == 0)? 16*0 :  1*0 ; break;
+   					case '1': mac[i] += (j == 0)? 16*1 :  1*1 ; break;
+   					case '2': mac[i] += (j == 0)? 16*2 :  1*2 ; break;
+   					case '3': mac[i] += (j == 0)? 16*3 :  1*3 ; break;
+   					case '4': mac[i] += (j == 0)? 16*4 :  1*4 ; break;
+   					case '5': mac[i] += (j == 0)? 16*5 :  1*5 ; break;
+   					case '6': mac[i] += (j == 0)? 16*6 :  1*6 ; break;
+   					case '7': mac[i] += (j == 0)? 16*7 :  1*7 ; break;
+   					case '8': mac[i] += (j == 0)? 16*8 :  1*8 ; break;
+   					case '9': mac[i] += (j == 0)? 16*9 :  1*9 ; break;
+   					case 'a': mac[i] += (j == 0)? 16*10 : 1*10; break;
+   					case 'A': mac[i] += (j == 0)? 16*10 : 1*10;  break;
+   					case 'b': mac[i] += (j == 0)? 16*11 : 1*11; break;
+   					case 'B': mac[i] += (j == 0)? 16*11 : 1*11;  break;
+   					case 'c': mac[i] += (j == 0)? 16*12 : 1*12; break;
+   					case 'C': mac[i] += (j == 0)? 16*12 : 1*12;  break;
+   					case 'd': mac[i] += (j == 0)? 16*13 : 1*13; break;
+   					case 'D': mac[i] += (j == 0)? 16*13 : 1*13;  break;
+   					case 'e': mac[i] += (j == 0)? 16*14 : 1*14; break;
+   					case 'E': mac[i] += (j == 0)? 16*14 : 1*14;  break;
+   					case 'f': mac[i] += (j == 0)? 16*15 : 1*15; break;
+   					case 'F': mac[i] += (j == 0)? 16*15 : 1*15;  break;  
+					default: std::cout << "ERROR: parsing mac" << std::endl;  
+   				}  
+				j++;
+				}
+			}
+		} else {
+			std::cout << "ERROR: should not be here" << std::endl;
+		}
+
+	}
 	std::cout << "INFO: self ip str: " << SELF_IP_STR << std::endl;
 	clientId_int = inet_addr(SELF_IP_STR.c_str());
 	std::cout << "INFO: client id: " << std::hex << clientId_int<< std::endl;
@@ -127,12 +178,12 @@ void Host::initConfig(){
 	unsigned char mpubk[IBE_MASTER_PUBKEY_LEN] = {0x31, 0x57, 0xcd, 0x29, 0xaf, 0x13, 0x83, 0xb7, 0x5e, 0xa0};
 	memcpy(master_privkey, mprik, IBE_MASTER_PRIVKEY_LEN);
 	memcpy(master_pubkey, mpubk, IBE_MASTER_PUBKEY_LEN);
-	client_mac[0]= 0x48;
-	client_mac[1]= 0x2a;
-	client_mac[2]= 0xe3;
-	client_mac[3]= 0x60;
-	client_mac[4]= 0x31;
-	client_mac[5]= 0xfa;
+	client_mac[0]= mac[0];
+	client_mac[1]= mac[1];
+	client_mac[2]= mac[2];
+	client_mac[3]= mac[3];
+	client_mac[4]= mac[4];
+	client_mac[5]= mac[5];
 	std::cout << "INFO: start user key gen" << std::endl;
     userkey_gen(clientId_int, master_privkey, usr_privkey);
 	std::cout << "INFO: start user key over" << std::endl;
@@ -180,7 +231,6 @@ void handle_thd(char*& item, u_char type){
 
 void Host::SMLMainHost(){
 	srand(NULL);
-	initConfig();
 	std::thread recv_t(&recv_thd);
 
 	struct timeval start, end;
@@ -204,7 +254,7 @@ void Host::SMLMainHost(){
 						std::cout << " " << std::hex << (unsigned short)((char*)&gwAnce)[i];
 					}
 					if(!Verify((unsigned char*)&gwAnce, gwAnce.signature, sizeof(GwAnce) - 16, Id2Int(gwAnce.gateway_id))){
-
+						
 					} else {
 					std::cout << "INFO: client: GwAnce received" << std::endl;
 					memset(&acAuthReq_c2g, 0, sizeof(AcAuthReq_C2G));

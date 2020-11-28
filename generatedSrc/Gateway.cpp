@@ -60,6 +60,9 @@ void gwAnce_thd(Gateway* gw){
 	}
 }
 static void dataHandlerGatewayrecvFromHost(u_char* param, const struct pcap_pkthdr* header, const u_char* packetData){
+	// ATTENTION: WHEN RECEIVING THE ETHER FRAME, WE NEED TWO MAPS: 
+	// IP TO CPS ID MAP
+	// MAC TO IP MAP
 	ether_header* eh;
 	eh = (ether_header*)packetData;
 	/*Configure your own protocol number of ethernet frame*/

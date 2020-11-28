@@ -7,6 +7,7 @@
 #include <thread>
 #include <stdlib.h>
 #include <sstream>
+#include <fstream>
 #include <stdio.h>
 #include <thread>
 #include <stdlib.h>
@@ -72,7 +73,7 @@ class Server {
 		void initConfig(std::string client_ip, ushort self_port, ushort gate_port);
 };
 
-void initOverallConfig(){
+void initOverallConfig(int client_num, std::string server_ip, std::string gateway_ip){
 	CLIENT_NUM = 2;
 	SELF_IP_STR = "127.0.0.1";
 	GATEWAY_IP_STR = "127.0.0.1";
@@ -104,13 +105,52 @@ void run(Server* server){
 
 //static int __currentState = STATE___init;
 int main(int argc, char** argv) {
-	initOverallConfig();
-	ushort self_prefix = 6001;
-	ushort gate_prefix = 8001;
-	Server* server[6];
+	ushort self_prefix = 6000;
+	ushort gate_prefix = 8000;
 	std::string client_ips[2];
-	client_ips[0] = "127.0.0.10";
-	client_ips[1] = "127.0.0.11";
+	std::string filename = argv[1];
+	std::cout << "CONFIG: " << filename << std::endl;
+	std::ifstream inConf(filename.c_str());
+	std::string s = "";
+	while(getline(inConf,s)){
+		int split_pos = s.find(",");
+		std::string first = s.substr(0, split_pos);
+		std::string second = s.substr(split_pos + 1, sizeof(s));
+		std::cout << "first: " << first << std::endl;
+		std::cout << "second: " << second << std::endl;
+		if(!first.compare("GATE_IP_STR")){
+			GATEWAY_IP_STR = second;
+			std::cout << "GATEWAY_IP_STR: " << GATEWAY_IP_STR << std::endl;
+		} else if(!first.compare("SERVER_IP_STR")){
+			SELF_IP_STR = second;
+			std::cout << "SELF_IP_STR: " << SELF_IP_STR << std::endl;
+		} else if(!first.compare("CLIENT_NUM")){
+			CLIENT_NUM = atoi(second.c_str());
+			std::cout << "CLIENT_NUM: " << CLIENT_NUM << std::endl;
+		} else if(!first.compare("RECV_PORT_PRE")){
+			self_prefix = atoi(second.c_str());
+			std::cout << "self_prefix: " << self_prefix << std::endl;
+		} else if(!first.compare("SND_PORT_PRE")){
+			gate_prefix = atoi(second.c_str());
+			std::cout << "gate_prefix: " << gate_prefix << std::endl;
+		} else if(!first.compare("IP2ID")){
+			int second_split_pos = second.find(",");
+			std::string sec = second.substr(0, second_split_pos);
+			std::string third = second.substr(second_split_pos + 1, sizeof(second));
+			std::cout << "sec: " << sec << std::endl;
+			std::cout << "third: " << third << std::endl;
+			int id = atoi(third.c_str());
+			client_ips[id] = sec;
+			std::cout << "ip: " << sec << "id: "<< third << std::endl;
+		} else {
+			std::cout << "ERROR: should not be here" << std::endl;
+		}
+
+	}
+	initOverallConfig(CLIENT_NUM, SELF_IP_STR, GATEWAY_IP_STR);
+	Server* server[6];
+	// client_ips[0] = "127.0.0.10";
+	// client_ips[1] = "127.0.0.11";
 	std::cout << "CLIENT NUM: " << CLIENT_NUM << std::endl;
 	for(int i = 0; i < CLIENT_NUM; i ++){
 		server[i] = new Server();

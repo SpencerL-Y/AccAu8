@@ -7,6 +7,7 @@
 #include <thread>
 #include <stdlib.h>
 #include <sstream>
+#include <fstream>
 #include <stdio.h>
 #include <thread>
 #include <stdlib.h>
@@ -64,14 +65,14 @@ class Host {
 		int receive();
 		int send(char* data_, int length, u_char dmac[6]);
 		void SMLMainHost();
-		void initConfig();
+		void initConfig(std::string argv1);
 		bool IPEqual(ip_address* ip1, int clientipnum);
 };
 static int __currentState = STATE___init;
 int main(int argc, char** argv) {
 	Host obj;
-	std::cin >> SELF_IP_STR;
-/*Initialize the object by user*/
+	std::string argv1 = argv[1];
+	obj.initConfig(argv1);
 	// add read config file HERE
 	obj.SMLMainHost();
 }
